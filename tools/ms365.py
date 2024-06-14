@@ -13,19 +13,7 @@ from timezonefinder import TimezoneFinder
 from geopy.geocoders import Nominatim
 import pandas as pd
 
-
-# In[2]:
-
-
-# Configuration for MS Graph API :
-client_id = 'd1b63a88-9266-4bbd-97a0-81c448bb3bfe'
-client_secret = 'nOX8Q~LDaAe14A2pDuFs5_SRHk4j5R0wTm0s5bDc'
-tenant_id = '240814aa-0b26-42e4-8a4c-408f1250c440'
-user_id = 'hiqsense@hiqsense.ca'
-staff_id = 'b940fb3b-06f3-44b4-b1b2-5998ec790c2a'
-
-
-# In[3]:
+# add Azure Active Directory Application Secret here 
 
 
 def get_access_token(client_id, client_secret, tenant_id):
