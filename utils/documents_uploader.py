@@ -10,6 +10,7 @@ from langchain_community.document_loaders import SeleniumURLLoader
 import requests
 import os
 from dotenv import load_dotenv
+
 load_dotenv()
 
 # In[4]:
@@ -33,13 +34,13 @@ uploaded_documents_dir = "../uploads/"
 
 # In[ ]:
 
-loader = PyPDFLoader(f"{uploaded_documents_dir}Knowledge_Base.pdf")
+loader = PyPDFLoader(f"{uploaded_documents_dir}KnowledgeBase.pdf")
 pdf_data = loader.load()
 
 # In[ ]:
 
 # split it into chunks
-text_splitter = RecursiveCharacterTextSplitter(chunk_size= 750,
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=750,
                                                chunk_overlap=250,
                                                add_start_index=True)
 all_splits = text_splitter.split_documents(pdf_data)
@@ -47,8 +48,9 @@ all_splits = text_splitter.split_documents(pdf_data)
 # In[ ]:
 
 # load it into Chroma
-db = Chroma.from_documents(all_splits,
-                           embedding=OpenAIEmbeddings(openai_api_key = os.environ["OPENAI_API_KEY"]),
-                           persist_directory=persist_dir,
-                           collection_name='hiqsense')
+db = Chroma.from_documents(
+    all_splits,
+    embedding=OpenAIEmbeddings(openai_api_key=os.environ["OPENAI_API_KEY"]),
+    persist_directory=persist_dir,
+    collection_name='hiqsense')
 db.persist()

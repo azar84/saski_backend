@@ -3,66 +3,51 @@
 
 # In[6]:
 
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uuid
 from agent_r01 import stream_flow
-
+import timezonefinder, geopy, pandas, pyairtable
+from fastapi.middleware.cors import CORSMiddleware
 
 # In[7]:
 
-
 app = FastAPI()
+origins = [
+    "http://localhost", "http://localhost:3000", "http://127.0.0.1:3000",
+    "https://b44cdafb-a367-4ca1-8058-3b301d03471b-00-2xqkr7h33cvlj.janeway.replit.dev",
+    "https://hiqsense.ca", "https://saski-ui.replit.app"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-# In[8]:
-
-
-session_id = str(uuid.uuid1()) 
+class Data(BaseModel):
+  query: str
+  thread_id: str
 
 
 # In[13]:
 
 
 @app.post("/invoke/")
-def process_query(data):
- 
-    try:
-        response = stream_flow(data.query ,  data.thread_id)
-        return {
-            "output": response,
-            
-            "session_id":  data.thread_id
-        }
-    except:
-        raise HTTPException(status_code=401, detail="Authentication Error")
+def process_query(data: Data):
 
-
-
-
-
+  try:
+    response = stream_flow(data.query, data.thread_id)
+    return {"output": response, "session_id": data.thread_id}
+  except Exception as e:
+    raise HTTPException(status_code=400, detail=str(e))
 
 
 # In[ ]:
-
-
-@app.post("/session_id/")
-def create_session_id(data: QueryData):
-  #You need to setup a passcode to obtain a session id , here we used hiqsense
-  if data.query == "hiqsense":
-    session_id = str(uuid.uuid1())  # Generate a new session ID
-    sessions.append(session_id)
-    agents[f'agent_{session_id}'] = Memory_Agent(session_id).create_agent()
-    return {"session_id": session_id}
-  else:
-    raise HTTPException(status_code=401, detail="Authentication Error")
-
-
-# In[ ]:
-
 
 if __name__ == "__main__":
   import uvicorn
   uvicorn.run(app, host="0.0.0.0", port=8000)
-
