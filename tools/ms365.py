@@ -67,81 +67,85 @@ def get_timezone(city: str):
 
 @tool
 def get_staff_availability(city=None, start_time=None):
-  """
-    Use this tool to find the availability of staff for a meeting then present it to user, first ask user about their city/location
-    to find their time zone, After that run this tool to find  available slots in their time zone.
+    """
+    Use this tool to find the availability of staff for a meeting then present it to the user, 
+    first ask the user about their city/location to find their time zone. 
+    After that run this tool to find available slots in their time zone.
     The nearest meeting shall be at least 12 hours from the current time.
-    Output shall be presented this way "Monday 31/05/2024: from 1:00 PM to 5:00PM (America/Regina)" 
-                                        "Tuesday 04/06/2024: from 1:00 PM to 3:00PM and from 3:30PM to 5:00 PM (America/Regina)", etc... 
-    Don't assume the user's time zone, always ask for it or ask for the location and use the available function to determine the time zone   
+    Output shall be presented this way "Monday 31/05/2024: from 1:00 PM to 5:00 PM (America/Regina)" 
+                                       "Tuesday 04/06/2024: from 1:00 PM to 3:00 PM and from 3:30 PM to 5:00 PM (America/Regina)", etc...
+    Don't assume the user's time zone, always ask for it or ask for the location and use the available function to determine the time zone.
+
     Args:
         city (str): The city or location of the user to calculate their time zone.
         start_time (str): The desired starting date for the meeting in this format '%Y-%m-%d %H:%M:%S'
     """
-  access_token = get_access_token(client_id, client_secret, tenant_id)
-  url = f'https://graph.microsoft.com/v1.0/solutions/bookingBusinesses/{user_id}/getStaffAvailability'
+    access_token = get_access_token(client_id, client_secret, tenant_id)
+    url = f'https://graph.microsoft.com/v1.0/solutions/bookingBusinesses/{user_id}/getStaffAvailability'
 
-  # Define the time range to check for availability
+    # Define the time range to check for availability
+    if start_time:
+        start_time = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+    else:
+        start_time = datetime.utcnow()
 
-  if start_time:
-    start_time = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-  else:
-    start_time = datetime.utcnow()
+    end_time = start_time + timedelta(days=5)  # Check for the next 5 days
 
-  end_time = start_time + timedelta(days=5)  # Check for the next day
+    user_tz = get_timezone(city)
+    try:
+        user_tz = pytz.timezone(user_tz)
+    except pytz.UnknownTimeZoneError:
+        return "Invalid timezone provided"
 
-  user_tz = get_timezone(city)
-  # Convert the provided timezone string to a pytz timezone object
-  try:
-    user_tz = pytz.timezone(user_tz)
-  except pytz.UnknownTimeZoneError:
-    return "Invalid timezone provided"
-  headers = {
-      'Authorization': f'Bearer {access_token}',
-      'Content-Type': 'application/json'
-  }
-  params = {
-      "staffIds": ["b940fb3b-06f3-44b4-b1b2-5998ec790c2a"],
-      "startDateTime": {
-          "dateTime": start_time.isoformat(),
-          "timeZone": "UTC"
-      },
-      "endDateTime": {
-          "dateTime": end_time.isoformat(),
-          "timeZone": "UTC"
-      }
-  }
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json'
+    }
+    params = {
+        "staffIds": ["b940fb3b-06f3-44b4-b1b2-5998ec790c2a"],
+        "startDateTime": {
+            "dateTime": start_time.isoformat(),
+            "timeZone": "UTC"
+        },
+        "endDateTime": {
+            "dateTime": end_time.isoformat(),
+            "timeZone": "UTC"
+        }
+    }
 
-  response = requests.post(url, headers=headers, json=params)
-  response.raise_for_status()
-  time_slots = response.json()['value'][0]['availabilityItems']
-  #available_slots = [slot for slot in response if slot['status'] == 'available']
-  # Filter and convert time slots
-  # Convert time slots
-  current_date = datetime.now(user_tz).date()
+    response = requests.post(url, headers=headers, json=params)
+    response.raise_for_status()
+    time_slots = response.json()['value'][0]['availabilityItems']
 
-  available_slots = []
-  for slot in time_slots:
-    # Convert the UTC datetime strings to datetime objects as naive
-    start_dt_naive = datetime.fromisoformat(slot['startDateTime']['dateTime'])
-    end_dt_naive = datetime.fromisoformat(slot['endDateTime']['dateTime'])
+    current_date = datetime.now(user_tz).date()
+    available_slots = []
 
-    # Localize the datetime objects to UTC and then convert to user's timezone
-    start_dt_user_tz = pytz.utc.localize(start_dt_naive).astimezone(user_tz)
-    end_dt_user_tz = pytz.utc.localize(end_dt_naive).astimezone(user_tz)
+    for slot in time_slots:
+        # Convert the UTC datetime strings to datetime objects as naive
+        start_dt_naive = datetime.fromisoformat(slot['startDateTime']['dateTime'])
+        end_dt_naive = datetime.fromisoformat(slot['endDateTime']['dateTime'])
 
-    # Update the slot's dateTime and timeZone fields to reflect the converted times
-    slot['startDateTime']['dateTime'] = start_dt_user_tz.isoformat()
-    slot['startDateTime']['timeZone'] = user_tz.zone
-    slot['endDateTime']['dateTime'] = end_dt_user_tz.isoformat()
-    slot['endDateTime']['timeZone'] = user_tz.zone
+        # Localize the datetime objects to UTC and then convert to user's timezone
+        start_dt_user_tz = pytz.utc.localize(start_dt_naive).astimezone(user_tz)
+        end_dt_user_tz = pytz.utc.localize(end_dt_naive).astimezone(user_tz)
 
-    # Filter slots that are available and not on the current date
-    if slot['status'] == 'available' and start_dt_user_tz.date(
-    ) != current_date:
-      available_slots.append(slot)
+        # Update the slot's dateTime and timeZone fields to reflect the converted times
+        slot['startDateTime']['dateTime'] = start_dt_user_tz.isoformat()
+        slot['startDateTime']['timeZone'] = user_tz.zone
+        slot['endDateTime']['dateTime'] = end_dt_user_tz.isoformat()
+        slot['endDateTime']['timeZone'] = user_tz.zone
 
-  return available_slots
+        # Filter slots that are available and not on the current date
+        if slot['status'] == 'available' and start_dt_user_tz.date() != current_date:
+            available_slots.append({
+                'dayOfWeek': start_dt_user_tz.strftime('%A'),
+                'date': start_dt_user_tz.strftime('%d/%m/%Y'),
+                'startTime': start_dt_user_tz.strftime('%I:%M %p'),
+                'endTime': end_dt_user_tz.strftime('%I:%M %p'),
+                'timeZone': user_tz.zone
+            })
+
+    return available_slots
 
 
 # In[5]:
