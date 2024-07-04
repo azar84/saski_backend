@@ -97,7 +97,7 @@ class Assistant:
 # doing so!
 # from langchain_openai import ChatOpenAI
 
-llm = ChatOpenAI(model="gpt-4o-2024-05-13")
+llm = ChatOpenAI(model="gpt-4-turbo-preview")
 
 primary_assistant_prompt = ChatPromptTemplate.from_messages([
     ("system", instructions),

@@ -70,8 +70,9 @@ def get_staff_availability(city=None, start_time=None):
   """
     Use this tool to find the availability of staff for a meeting then present it to user, first ask user about their city/location
     to find their time zone, After that run this tool to find  available slots in their time zone.
-    Output shall be presented this way "Monday 31/05/2024: from 1:00 PM to 5:00PM (America/Regina) 
-                                        Tuesday 04/06/2024: from 1:00 PM to 3:00PM and from 3:30PM to 5:00 PM (America/Regina), etc... 
+    The nearest meeting shall be at least 12 hours from the current time.
+    Output shall be presented this way "Monday 31/05/2024: from 1:00 PM to 5:00PM (America/Regina)" 
+                                        "Tuesday 04/06/2024: from 1:00 PM to 3:00PM and from 3:30PM to 5:00 PM (America/Regina)", etc... 
     Don't assume the user's time zone, always ask for it or ask for the location and use the available function to determine the time zone   
     Args:
         city (str): The city or location of the user to calculate their time zone.
@@ -81,7 +82,7 @@ def get_staff_availability(city=None, start_time=None):
   url = f'https://graph.microsoft.com/v1.0/solutions/bookingBusinesses/{user_id}/getStaffAvailability'
 
   # Define the time range to check for availability
-  # Define the time range to check for availability
+
   if start_time:
     start_time = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
   else:
@@ -117,6 +118,9 @@ def get_staff_availability(city=None, start_time=None):
   #available_slots = [slot for slot in response if slot['status'] == 'available']
   # Filter and convert time slots
   # Convert time slots
+  current_date = datetime.now(user_tz).date()
+
+  available_slots = []
   for slot in time_slots:
     # Convert the UTC datetime strings to datetime objects as naive
     start_dt_naive = datetime.fromisoformat(slot['startDateTime']['dateTime'])
@@ -131,9 +135,12 @@ def get_staff_availability(city=None, start_time=None):
     slot['startDateTime']['timeZone'] = user_tz.zone
     slot['endDateTime']['dateTime'] = end_dt_user_tz.isoformat()
     slot['endDateTime']['timeZone'] = user_tz.zone
-  available_slots = [
-      slot for slot in time_slots if slot['status'] == 'available'
-  ]
+
+    # Filter slots that are available and not on the current date
+    if slot['status'] == 'available' and start_dt_user_tz.date(
+    ) != current_date:
+      available_slots.append(slot)
+
   return available_slots
 
 
@@ -166,7 +173,7 @@ def is_within_time_slots(input_time, input_timezone, time_slots):
     end_dt_local = end_dt_naive.astimezone(input_tz)
 
     # Check if the input time is within the slot and at least 30 minutes before the end
-    if start_dt_local <= input_dt < end_dt_local - timedelta(minutes=30):
+    if start_dt_local <= input_dt < end_dt_local - timedelta(minutes=29):
       return True
 
   return False
