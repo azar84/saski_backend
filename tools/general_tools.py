@@ -57,7 +57,8 @@ def llm_in_industry(industry: str):
   search_engine = TavilySearchResults()
   try:
     query_results = search_engine.invoke(
-        f'Use cases of LLM like ChatGPT in the industry of {industry}')
+        f'How AI Assistants and AI Chatbots can help business in {industry} industry to save money and automate the operations'
+    )
     res = [f"- {item['content']}" for item in query_results]
     results.extend(res)
     return results
